@@ -1,0 +1,390 @@
+{
+  "name": "平安账单邮件获取后整理存NAS V.12本地模型",
+  "nodes": [
+    {
+      "parameters": {
+        "postProcessAction": "nothing",
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\"]"
+        }
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        0
+      ],
+      "id": "fe647a47-7b59-45bb-ac07-f7ba8d42cee6",
+      "name": "Email Trigger (IMAP)",
+      "credentials": {
+        "imap": {
+          "id": "rGZ9aK565RMpFKNG",
+          "name": "xm@miaoking.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9f8642cb-a6fe-4bd7-b8b6-f97b574dd5d1",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "账单",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        0
+      ],
+      "id": "9c0e62df-05ca-4a3b-a791-2bd381b1edba",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.textHtml }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=## 系统角色设定\n你是一个专业的数据处理助手，专门从HTML表格中提取结构化数据并转换为JSON格式。\n\n## 核心任务\n识别用户提交的HTML代码中提取交易记录信息，并输出标准化的JSON格式。\n\n## 数据处理要求\n\n### 输入识别\n- 识别包含以下字段的表格：\n  - 交易日期\n  - 交易说明\n  - 人民币金额\n\n### 数据提取规则\n1. **数据定位**：查找交易明细\n2. **数据行识别**：跳过表头，只提取数据行内容\n3. **字段映射**：\n   - 交易日期 → \"transaction_date\"\n   - 交易说明 → \"description\"\n   - 人民币金额 → \"amount_cny\"\n\n### 输出格式规范\n```json\n{\n  \"source\": \"html_table_extraction\",\n  \"extracted_at\": \"当前时间戳\",\n  \"records\": [\n    {\n      \"transaction_date\": \"YYYY-MM-DD\",\n      \"description\": \"交易描述文本\",\n      \"amount_cny\": \"数字值(可以为负值)\"\n    }\n  ]\n}\n```\n\n## 特殊处理说明\n- **日期格式化**：统一转换为YYYY-MM-DD格式\n- **金额处理**：不要货币符号，如果交易描述中有“还款”，则为负值\n- **空值处理**：如遇空单元格，对应字段输出空字符串\n- **数据验证**：检查提取的记录数量是否合理\n\n## 错误处理\n- 如未找到指定表格，返回空records数组\n- 如表格结构异常，在extraction_notes中说明问题\n\n请按照以上规范处理用户提交的HTML表格数据。"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        672,
+        0
+      ],
+      "id": "a7b15564-49b7-4a8b-ad2e-7950648bf7ae",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "Qwen/Qwen3-8B",
+          "mode": "list",
+          "cachedResultName": "Qwen/Qwen3-8B"
+        },
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        336
+      ],
+      "id": "58584ef8-8fb8-4b20-bec0-44049a02335e",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "2fAmT2W7V9BrGgpU",
+          "name": "硅基流动"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"source\": \"html_table_extraction\",\n  \"extracted_at\": \"当前时间戳\",\n  \"records\": [\n    {\n      \"transaction_date\": \"YYYY-MM-DD\",   \n      \"description\": \"交易描述文本\",\n      \"amount_cny\": \"数字值(可含逗号分隔)\"\n    }\n  ]\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        208
+      ],
+      "id": "a4622d80-b942-42e7-9d5a-b77cb1b5c83a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.records",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "a50f2ab1-8e5d-4d57-809c-c94ea073b396",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        96
+      ],
+      "id": "bee30402-af04-4dee-a38a-43651d7cd7c0",
+      "name": "Convert to File",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "path": "=/sao/信用卡账单/平安账单{{ $now.format(\"yyyy-MM\") }}.csv"
+      },
+      "type": "n8n-nodes-base.ftp",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        0
+      ],
+      "id": "cf6451b1-4708-4628-917f-d81a640a368f",
+      "name": "FTP",
+      "credentials": {
+        "ftp": {
+          "id": "sNm9xB1j8k9DSLjj",
+          "name": "FTP Nas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 保存到家里NAS的sao目录下"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1520,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "ac58ac91-00c5-42b7-8f96-1d7ec43163a3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 将平安信用卡的账单邮件转换成可导入财智的csv\n",
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        128,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "99e97d19-ef1f-4937-aad8-6c76f4bf9384",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-r1:8b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        416,
+        336
+      ],
+      "id": "c884cc65-b4d4-44a8-b938-feeb9db33a92",
+      "name": "Ollama Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "TXdVvZgM8P0hZkf9",
+          "name": "Ollama AMD主机"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "deepseek-r1:14b",
+        "options": {
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        704,
+        400
+      ],
+      "id": "4efffff3-108a-418f-9275-61cbf7e942c3",
+      "name": "Ollama Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "TXdVvZgM8P0hZkf9",
+          "name": "Ollama AMD主机"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "maxTokens": 8192,
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        560,
+        224
+      ],
+      "id": "9049d828-1bb5-4888-8c2a-8d94e035b965",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "53ynjhv6UAfm7OLI",
+          "name": "DeepSeek 官网API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "FTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Ollama Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cb691998-7347-48f0-b990-271d70941629",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "92ad5668f5114306f75d6caf77ba3be173f2d7c79a24e95984be5d1da5aa0e51"
+  },
+  "id": "6ZsWyiQGvnZuzfsx",
+  "tags": [
+    {
+      "updatedAt": "2025-10-13T03:35:47.700Z",
+      "createdAt": "2025-10-13T03:35:47.700Z",
+      "id": "18lrdQXYRnx47VK3",
+      "name": "邮件"
+    },
+    {
+      "updatedAt": "2025-11-07T09:33:40.679Z",
+      "createdAt": "2025-11-07T09:33:40.679Z",
+      "id": "XmWZrrjrdFrtO6DE",
+      "name": "FTP"
+    }
+  ]
+}
