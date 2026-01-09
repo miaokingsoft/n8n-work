@@ -151,7 +151,7 @@
     {
       "parameters": {
         "operation": "upload",
-        "path": "=/sao/信用卡账单/平安账单{{ $now.format(\"yyyy-MM\") }}.csv"
+        "path": "=/信用卡账单/平安账单{{ $now.format(\"yyyy-MM\") }}.csv"
       },
       "type": "n8n-nodes-base.ftp",
       "typeVersion": 1,
